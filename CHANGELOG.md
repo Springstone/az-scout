@@ -9,6 +9,7 @@ This project uses [Calendar Versioning](https://calver.org/) (`YYYY.MM.MICRO`).
 
 ### Fixed
 
+- **`ModuleNotFoundError: No module named 'mcp.server.fastmcp'` on fresh installs** – the MCP Python SDK 2.0.0 removed the `mcp.server.fastmcp` module entirely (FastMCP is no longer bundled; the SDK moved to a new `mcp.server.runner` API). Because the dependency was declared as `mcp[cli]>=1.9` with no upper bound, any fresh install (`uvx az-scout`, `pip install az-scout`, container rebuild) resolved to `mcp` 2.0.0 and crashed on import. The requirement is now pinned to `mcp[cli]>=1.9,<2` until the server is migrated to the 2.x API.
 - **Container image version (#159)** – the GHCR container image now reports the correct version in the UI footer, MCP banner, and `_version.py`. The Dockerfile previously copied a partial worktree alongside the full `.git/` directory, which made `git describe` return `v<tag>-dirty` and caused `hatch-vcs` to emit the next-dev version (e.g. tag `v2026.4.1` was reported as `2026.4.2.dev0` inside the container). The version is now computed on the CI host and injected into the build via the `AZ_SCOUT_VERSION` build-arg / `SETUPTOOLS_SCM_PRETEND_VERSION`, making container builds deterministic and removing `.git/` from the build context.
 
 ### Changed

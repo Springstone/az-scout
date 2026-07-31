@@ -88,7 +88,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "jinja2", specifier = ">=3.1" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.9" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.9,<2" },
     { name = "msal", specifier = ">=1.28" },
     { name = "prompt-toolkit", specifier = ">=3.0" },
     { name = "requests", specifier = ">=2.31" },
