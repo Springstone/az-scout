@@ -63,7 +63,9 @@ can narrow output before printing. Document them so it picks the right one.
 - Keep the function in the right file: core tools in `mcp_server.py` or a helper imported there;
   feature-scoped tools in the owning plugin's `tools.py`.
 - For new tools, update `README.md` MCP table and `docs/ai/mcp.md`, and add a test
-  in `tests/test_mcp_server.py` (or the plugin's test module).
+  in `tests/test_mcp_server.py` (or the plugin's test module). Under MCP SDK 2.x,
+  `await mcp.call_tool(...)` returns a `CallToolResult` — assert on
+  `json.loads(result.content[0].text)`, not the old `(content, structured)` tuple.
 
 ## Never
 

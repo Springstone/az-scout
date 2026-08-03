@@ -17,6 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from starlette.applications import Starlette
 from starlette.responses import StreamingResponse
 
 from az_scout import __version__, azure_api
@@ -284,17 +285,46 @@ app.include_router(sku_detail_router, prefix="/api")
 # MCP – mount the MCP server as an ASGI sub-app under /mcp
 # ---------------------------------------------------------------------------
 
+from az_scout.mcp_server import TRANSPORT_SECURITY as _mcp_transport_security  # noqa: E402
 from az_scout.mcp_server import mcp as _mcp_server  # noqa: E402
 
-# Override the internal path so that mounting at "/mcp" gives a clean
-# "/mcp" endpoint (instead of the default "/mcp/mcp").
-_mcp_server.settings.streamable_http_path = "/"
-_mcp_starlette = _mcp_server.streamable_http_app()
+
+def _build_mcp_asgi_app() -> Starlette:
+    """Build a fresh Streamable HTTP ASGI app (and session manager) for the MCP server.
+
+    ``streamable_http_path="/"`` keeps the mounted endpoint at ``/mcp`` instead of
+    the SDK default ``/mcp/mcp``.  ``transport_security`` must be passed explicitly:
+    when it is omitted the SDK auto-enables DNS-rebinding protection for loopback
+    bind hosts, which would reject requests from in-process clients.
+
+    Each call constructs *and installs* a brand-new ``StreamableHTTPSessionManager``
+    on the underlying server, which is what makes lifespan re-entry possible.
+    """
+    # Annotated explicitly: the pre-commit mypy env has no ``mcp`` stubs, so the
+    # call would otherwise be inferred as ``Any`` and trip ``warn_return_any``.
+    asgi_app: Starlette = _mcp_server.streamable_http_app(
+        streamable_http_path="/",
+        transport_security=_mcp_transport_security,
+    )
+    return asgi_app
+
+
+_mcp_starlette = _build_mcp_asgi_app()
+
+
+async def _mcp_asgi(scope: Any, receive: Any, send: Any) -> None:
+    """Dispatch to the current MCP ASGI app.
+
+    ``app.mount()`` captures the sub-app object at mount time, so the mounted
+    callable must stay stable while ``_mcp_starlette`` is swapped out by
+    :func:`_ensure_fresh_session_manager`.
+    """
+    await _mcp_starlette(scope, receive, send)
+
 
 # Wrap the MCP sub-app with the auth middleware so MCP tool calls
 # also pick up the user token from the request headers.
-_mcp_with_auth = _AuthContextMiddleware(_mcp_starlette)
-app.mount("/mcp", _mcp_with_auth)
+app.mount("/mcp", _AuthContextMiddleware(_mcp_asgi))
 
 
 def _ensure_fresh_session_manager() -> None:
@@ -302,24 +332,13 @@ def _ensure_fresh_session_manager() -> None:
 
     ``StreamableHTTPSessionManager.run()`` can only be called once per
     instance.  When the FastAPI lifespan is re-entered (e.g. across
-    multiple ``TestClient`` contexts in tests) we need a fresh manager.
+    multiple ``TestClient`` contexts in tests) we need a fresh manager,
+    which rebuilding the ASGI app gives us.
     """
-    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+    global _mcp_starlette
 
-    mgr = _mcp_server.session_manager
-    if mgr._has_started:
-        new_mgr = StreamableHTTPSessionManager(
-            app=_mcp_server._mcp_server,
-            event_store=_mcp_server._event_store,
-            json_response=_mcp_server.settings.json_response,
-            stateless=_mcp_server.settings.stateless_http,
-            security_settings=_mcp_server.settings.transport_security,
-        )
-        _mcp_server._session_manager = new_mgr
-        # Also patch the ASGI handler used by the mounted Starlette app
-        for route in _mcp_starlette.routes:
-            if hasattr(route, "app") and hasattr(route.app, "session_manager"):
-                route.app.session_manager = new_mgr
+    if getattr(_mcp_server.session_manager, "_has_started", False):
+        _mcp_starlette = _build_mcp_asgi_app()
 
 
 # ---------------------------------------------------------------------------

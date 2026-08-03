@@ -10,7 +10,7 @@ For plugin authors implementing a plugin, see `plugin-author.instructions.md`.
 
 ## Compatibility
 
-- `PLUGIN_API_VERSION` lives in `plugin_api.py`. **Bump it** for any breaking change to the protocol, dataclasses, or shared helpers.
+- `PLUGIN_API_VERSION` lives in `azure_api/__init__.py`. **Bump it** for any breaking change to the protocol, dataclasses, or shared helpers.
 - The plugin manager guard refuses to load plugins declaring an incompatible major version — keep the guard in sync.
 - Document every bump in `CHANGELOG.md` under `### Changed` with a migration note.
 

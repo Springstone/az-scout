@@ -142,6 +142,7 @@ def mcp(http: bool, port: int, verbose: bool) -> None:
     import os
 
     from az_scout.logging_config import _setup_logging
+    from az_scout.mcp_server import TRANSPORT_SECURITY
     from az_scout.mcp_server import mcp as mcp_server
 
     env_level = "DEBUG" if verbose else "WARNING"
@@ -149,8 +150,14 @@ def mcp(http: bool, port: int, verbose: bool) -> None:
     _setup_logging(level=logging.DEBUG if verbose else logging.WARNING)
 
     if http:
-        mcp_server.settings.port = port
-        mcp_server.run(transport="streamable-http")
+        # Transport settings live on run() in the MCP SDK 2.x API.  The
+        # security policy must be passed explicitly, otherwise the SDK
+        # auto-enables DNS-rebinding protection for loopback bind hosts.
+        mcp_server.run(
+            transport="streamable-http",
+            port=port,
+            transport_security=TRANSPORT_SECURITY,
+        )
     else:
         mcp_server.run(transport="stdio")
 

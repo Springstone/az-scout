@@ -61,9 +61,9 @@ class TestMcpListTenants:
             "defaultTenantId": "tid-1",
         }
         with patch("az_scout.azure_api.list_tenants", return_value=mock_data):
-            content, _ = await mcp.call_tool("list_tenants", {})
+            result = await mcp.call_tool("list_tenants", {})
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert data["defaultTenantId"] == "tid-1"
         assert len(data["tenants"]) == 1
 
@@ -80,16 +80,16 @@ class TestMcpListSubscriptions:
     async def test_returns_subscriptions_json(self, _mock_credential):
         mock_data = [{"id": "sub-1", "name": "My Sub"}]
         with patch("az_scout.azure_api.list_subscriptions", return_value=mock_data):
-            content, _ = await mcp.call_tool("list_subscriptions", {})
+            result = await mcp.call_tool("list_subscriptions", {})
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert len(data) == 1
         assert data[0]["id"] == "sub-1"
 
     @pytest.mark.anyio()
     async def test_passes_tenant_id(self, _mock_credential):
         with patch("az_scout.azure_api.list_subscriptions", return_value=[]) as mock_fn:
-            _, _ = await mcp.call_tool("list_subscriptions", {"tenant_id": "tid-x"})
+            await mcp.call_tool("list_subscriptions", {"tenant_id": "tid-x"})
 
         mock_fn.assert_called_once_with("tid-x")
 
@@ -106,9 +106,9 @@ class TestMcpListRegions:
     async def test_returns_regions_json(self, _mock_credential):
         mock_data = [{"name": "eastus", "displayName": "East US"}]
         with patch("az_scout.azure_api.list_regions", return_value=mock_data):
-            content, _ = await mcp.call_tool("list_regions", {})
+            result = await mcp.call_tool("list_regions", {})
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert data[0]["name"] == "eastus"
 
 
@@ -132,12 +132,12 @@ class TestMcpGetZoneMappings:
             }
         ]
         with patch("az_scout.azure_api.get_mappings", return_value=mock_data):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_zone_mappings",
                 {"region": "eastus", "subscription_ids": ["sub-1"]},
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert len(data) == 1
         assert data[0]["mappings"][0]["physicalZone"] == "eastus-az1"
 
@@ -167,12 +167,12 @@ class TestMcpGetSkuAvailability:
             patch("az_scout.azure_api.get_skus", return_value=mock_data),
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=[]),
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_availability",
                 {"region": "eastus", "subscription_id": "sub-1"},
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert len(data) == 1
         assert data[0]["name"] == "Standard_D2s_v3"
         assert data[0]["capabilities"]["vCPUs"] == "2"
@@ -184,7 +184,7 @@ class TestMcpGetSkuAvailability:
             patch("az_scout.azure_api.get_skus", return_value=[]) as mock_fn,
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=[]),
         ):
-            _, _ = await mcp.call_tool(
+            await mcp.call_tool(
                 "get_sku_availability",
                 {
                     "region": "eastus",
@@ -212,7 +212,7 @@ class TestMcpGetSkuAvailability:
             patch("az_scout.azure_api.get_skus", return_value=[]) as mock_fn,
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=[]),
         ):
-            _, _ = await mcp.call_tool(
+            await mcp.call_tool(
                 "get_sku_availability",
                 {
                     "region": "eastus",
@@ -268,12 +268,12 @@ class TestMcpGetSkuAvailability:
             patch("az_scout.azure_api.get_skus", return_value=mock_skus),
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=mock_usages),
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_availability",
                 {"region": "eastus", "subscription_id": "sub-1"},
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert data[0]["quota"]["limit"] == 50
         assert data[0]["quota"]["used"] == 4
         assert data[0]["quota"]["remaining"] == 46
@@ -297,7 +297,7 @@ class TestMcpGetSkuAvailability:
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=[]),
             patch("az_scout.azure_api.enrich_skus_with_prices") as mock_enrich,
         ):
-            content, _ = await mcp.call_tool(
+            await mcp.call_tool(
                 "get_sku_availability",
                 {
                     "region": "eastus",
@@ -335,12 +335,12 @@ class TestMcpGetSkuAvailability:
             patch("az_scout.azure_api.get_skus", return_value=mock_skus),
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=mock_usages),
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_availability",
                 {"region": "eastus", "subscription_id": "sub-1"},
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         conf = data[0]["confidence"]
         assert "score" in conf
         assert "label" in conf
@@ -355,7 +355,7 @@ class TestMcpGetSkuAvailability:
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=[]),
             patch("az_scout.azure_api.enrich_skus_with_prices") as mock_enrich,
         ):
-            _, _ = await mcp.call_tool(
+            await mcp.call_tool(
                 "get_sku_availability",
                 {"region": "eastus", "subscription_id": "sub-1"},
             )
@@ -384,7 +384,7 @@ class TestMcpGetSpotScores:
             "az_scout.azure_api.get_spot_placement_scores",
             return_value=mock_result,
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_spot_scores",
                 {
                     "region": "eastus",
@@ -393,7 +393,7 @@ class TestMcpGetSpotScores:
                 },
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert data["scores"]["Standard_D2s_v3"] == {"1": "High", "2": "Medium"}
         assert data["scores"]["Standard_D4s_v3"] == {"1": "Medium", "2": "Low"}
         assert data["errors"] == []
@@ -404,7 +404,7 @@ class TestMcpGetSpotScores:
             "az_scout.azure_api.get_spot_placement_scores",
             return_value={"scores": {}, "errors": []},
         ) as mock_fn:
-            _, _ = await mcp.call_tool(
+            await mcp.call_tool(
                 "get_spot_scores",
                 {
                     "region": "westeurope",
@@ -459,7 +459,7 @@ class TestMcpDeploymentConfidence:
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=mock_usages),
             patch("az_scout.azure_api.enrich_skus_with_prices"),
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_deployment_confidence",
                 {
                     "region": "eastus",
@@ -468,7 +468,7 @@ class TestMcpDeploymentConfidence:
                 },
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert data["region"] == "eastus"
         assert data["subscriptionId"] == "sub-1"
         assert len(data["results"]) == 1
@@ -509,7 +509,7 @@ class TestMcpDeploymentConfidence:
             patch("az_scout.azure_api.enrich_skus_with_prices"),
             patch("az_scout.azure_api.get_spot_placement_scores", return_value=mock_spot),
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_deployment_confidence",
                 {
                     "region": "eastus",
@@ -520,7 +520,7 @@ class TestMcpDeploymentConfidence:
                 },
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         conf = data["results"][0]["deploymentConfidence"]
         assert conf["scoreType"] == "basic+spot"
 
@@ -532,7 +532,7 @@ class TestMcpDeploymentConfidence:
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=[]),
             patch("az_scout.azure_api.enrich_skus_with_prices"),
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_deployment_confidence",
                 {
                     "region": "eastus",
@@ -541,7 +541,7 @@ class TestMcpDeploymentConfidence:
                 },
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert len(data["results"]) == 0
         assert any("Standard_NOPE_v99" in e for e in data["errors"])
 
@@ -572,7 +572,7 @@ class TestMcpDeploymentConfidence:
             patch("az_scout.azure_api.quotas.get_compute_usages", return_value=mock_usages),
             patch("az_scout.azure_api.enrich_skus_with_prices"),
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_deployment_confidence",
                 {
                     "region": "eastus",
@@ -583,7 +583,7 @@ class TestMcpDeploymentConfidence:
                 },
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         entry = data["results"][0]
         assert "rawSignals" not in entry
         assert "provenance" not in entry["deploymentConfidence"]
@@ -614,12 +614,12 @@ class TestMcpGetSkuPricingDetail:
             "az_scout.azure_api.get_sku_pricing_detail",
             return_value=mock_result,
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_detail",
                 {"region": "swedencentral", "sku_name": "Standard_D2s_v5"},
             )
 
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert data["skuName"] == "Standard_D2s_v5"
         assert data["paygo"] == 0.102
         assert data["ri_1y"] == 0.0602
@@ -631,7 +631,7 @@ class TestMcpGetSkuPricingDetail:
             "az_scout.azure_api.get_sku_pricing_detail",
             return_value={},
         ) as mock_fn:
-            _, _ = await mcp.call_tool(
+            await mcp.call_tool(
                 "get_sku_detail",
                 {
                     "region": "eastus",
@@ -660,7 +660,7 @@ class TestMcpGetSkuPricingDetail:
                 return_value=mock_profile,
             ) as mock_prof,
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_detail",
                 {
                     "region": "eastus",
@@ -671,7 +671,7 @@ class TestMcpGetSkuPricingDetail:
             )
 
         mock_prof.assert_called_once_with("eastus", "sub-1", "Standard_D2s_v5", "tid-x")
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert "profile" in data
         assert data["profile"]["compute"]["vCPUs"] == 2
 
@@ -686,11 +686,84 @@ class TestMcpGetSkuPricingDetail:
             ),
             patch("az_scout.azure_api.get_sku_profile") as mock_prof,
         ):
-            content, _ = await mcp.call_tool(
+            result = await mcp.call_tool(
                 "get_sku_detail",
                 {"region": "eastus", "sku_name": "Standard_D2s_v5"},
             )
 
         mock_prof.assert_not_called()
-        data = json.loads(content[0].text)
+        data = json.loads(result.content[0].text)
         assert "profile" not in data
+
+
+class TestStreamableHttpMount:
+    """The MCP server is mounted as an ASGI sub-app under ``/mcp``."""
+
+    _INIT_REQUEST = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {"name": "az-scout-tests", "version": "0"},
+        },
+    }
+    _HEADERS = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+    }
+
+    def test_initialize_handshake(self, client):
+        """POST /mcp completes the initialize handshake and issues a session id."""
+        resp = client.post("/mcp", json=self._INIT_REQUEST, headers=self._HEADERS)
+
+        assert resp.status_code == 200
+        assert resp.headers.get("mcp-session-id")
+        assert "az-scout" in resp.text
+
+    def test_session_manager_survives_lifespan_reentry(self):
+        """A second TestClient context gets a fresh StreamableHTTP session manager.
+
+        ``StreamableHTTPSessionManager.run()`` is single-use, so re-entering the
+        app lifespan must rebuild it (see ``_ensure_fresh_session_manager``).
+        """
+        from fastapi.testclient import TestClient
+
+        from az_scout.app import app
+
+        for _ in range(2):
+            with TestClient(app, raise_server_exceptions=False) as c:
+                resp = c.post("/mcp", json=self._INIT_REQUEST, headers=self._HEADERS)
+                assert resp.status_code == 200
+
+
+class TestAuthContextPropagation:
+    """OBO tokens must reach tool bodies even though sync tools run on a worker thread."""
+
+    @pytest.mark.anyio()
+    async def test_request_auth_visible_inside_sync_tool(self):
+        """``get_request_auth()`` inside a sync tool sees the caller's token.
+
+        The MCP SDK dispatches sync tool bodies via ``anyio.to_thread.run_sync``,
+        so the auth ContextVar set by ``_AuthContextMiddleware`` must propagate
+        into the worker thread.
+        """
+        import contextlib
+
+        from az_scout.auth import clear_request_auth, get_request_auth, set_request_auth
+
+        def _echo_auth() -> str:
+            """Return the ambient request auth token."""
+            return json.dumps({"token": get_request_auth()})
+
+        mcp.tool(name="_echo_auth")(_echo_auth)
+        ctx_token = set_request_auth("user-token-abc")
+        try:
+            result = await mcp.call_tool("_echo_auth", {})
+        finally:
+            clear_request_auth(ctx_token)
+            with contextlib.suppress(Exception):
+                mcp.remove_tool("_echo_auth")
+
+        assert json.loads(result.content[0].text)["token"] == "user-token-abc"
