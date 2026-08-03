@@ -55,8 +55,9 @@ Pick the slice that matches the bumped library:
   - Hit one read-only endpoint manually (e.g. `/api/regions?subscriptionId=…`).
 - **`fastapi`, `starlette`, `uvicorn`** — startup + middleware:
   - Run the workspace task `Backend: run`, hit `/` and `/healthz`, watch logs for warnings.
-- **`mcp[cli]`** — MCP server:
-  - `uv run az-scout mcp --stdio` and issue a `tools/list` request via your MCP client.
+- **`mcp[cli]`** — MCP server (SDK 2.x, `mcp.server.MCPServer`):
+  - `uv run az-scout mcp` and issue a `tools/list` request via your MCP client.
+  - `uv run pytest tests/test_mcp_server.py -q` — covers both transports and the `/mcp` mount.
 - **GitHub Actions / Docker bumps** — read the workflow / Dockerfile diff and confirm CI is green on the PR.
 
 ## 6. Decide and act

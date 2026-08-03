@@ -79,8 +79,16 @@ def _setup_logging(level: int | None = None) -> None:
     app_logger.setLevel(level)
     app_logger.propagate = False
 
-    # Unify uvicorn, httpx and mcp loggers under the same format
-    for third_party in ("uvicorn", "uvicorn.error", "uvicorn.access", "httpx", "mcp"):
+    # Unify uvicorn, httpx and mcp loggers under the same format.
+    # The MCP SDK 2.x uses httpx2 internally, hence both httpx names.
+    for third_party in (
+        "uvicorn",
+        "uvicorn.error",
+        "uvicorn.access",
+        "httpx",
+        "httpx2",
+        "mcp",
+    ):
         tp_logger = logging.getLogger(third_party)
         tp_logger.handlers = [handler]
         tp_logger.propagate = False
@@ -89,6 +97,7 @@ def _setup_logging(level: int | None = None) -> None:
     logging.getLogger("uvicorn.error").setLevel(level)
     logging.getLogger("uvicorn.access").setLevel(logging.INFO)
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpx2").setLevel(logging.WARNING)
     logging.getLogger("mcp").setLevel(logging.INFO)
 
     # Silence noisy third-party loggers

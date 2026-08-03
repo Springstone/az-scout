@@ -9,11 +9,29 @@ This project uses [Calendar Versioning](https://calver.org/) (`YYYY.MM.MICRO`).
 
 ### Fixed
 
-- **`ModuleNotFoundError: No module named 'mcp.server.fastmcp'` on fresh installs** – the MCP Python SDK 2.0.0 removed the `mcp.server.fastmcp` module entirely (FastMCP is no longer bundled; the SDK moved to a new `mcp.server.runner` API). Because the dependency was declared as `mcp[cli]>=1.9` with no upper bound, any fresh install (`uvx az-scout`, `pip install az-scout`, container rebuild) resolved to `mcp` 2.0.0 and crashed on import. The requirement is now pinned to `mcp[cli]>=1.9,<2` until the server is migrated to the 2.x API.
+- **`ModuleNotFoundError: No module named 'mcp.server.fastmcp'` on fresh installs** – the MCP Python SDK 2.0.0 removed the `mcp.server.fastmcp` module entirely (FastMCP is no longer bundled). Because the dependency was declared as `mcp[cli]>=1.9` with no upper bound, any fresh install (`uvx az-scout`, `pip install az-scout`, container rebuild) resolved to `mcp` 2.0.0 and crashed on import. The requirement was temporarily pinned to `mcp[cli]>=1.9,<2`; that cap is now lifted and the server runs on the 2.x API (see *Changed* below).
 - **Container image version (#159)** – the GHCR container image now reports the correct version in the UI footer, MCP banner, and `_version.py`. The Dockerfile previously copied a partial worktree alongside the full `.git/` directory, which made `git describe` return `v<tag>-dirty` and caused `hatch-vcs` to emit the next-dev version (e.g. tag `v2026.4.1` was reported as `2026.4.2.dev0` inside the container). The version is now computed on the CI host and injected into the build via the `AZ_SCOUT_VERSION` build-arg / `SETUPTOOLS_SCM_PRETEND_VERSION`, making container builds deterministic and removing `.git/` from the build context.
 
 ### Changed
 
+- **Migrated the MCP server to the MCP Python SDK 2.x API (#176)** – `mcp[cli]` is now
+  `>=2,<3` and the temporary `<2` cap is gone. `src/az_scout/mcp_server.py` builds a
+  `mcp.server.MCPServer` instead of the removed `mcp.server.fastmcp.FastMCP`, and the server
+  now advertises its version in the initialize handshake. Transport settings moved off the
+  removed `FastMCP.settings` object onto keyword arguments of `run()` and
+  `streamable_http_app()`; `FASTMCP_ALLOWED_HOSTS` keeps its name and its behaviour
+  (DNS-rebinding protection stays disabled unless the variable is set), and the resulting
+  `TransportSecuritySettings` is now exported as `mcp_server.TRANSPORT_SECURITY` and passed
+  explicitly to every transport. The `/mcp` mount inside the web app was rewritten to use
+  only public SDK API — the previous version reached into several private attributes to
+  recycle the one-shot streamable-HTTP session manager. No tool names, parameters, or JSON
+  payloads changed, and both the stdio and streamable-HTTP transports behave as before.
+- **Plugin authors:** `PLUGIN_API_VERSION` intentionally stays at `1.3` — the plugin contract
+  (`get_mcp_tools() -> list[Callable]`, `Annotated[..., Field(...)]` parameters) is unchanged
+  under SDK 2.x. Plugins that import from `mcp.server.fastmcp` **directly** must switch to
+  `mcp.server` / `mcp.server.mcpserver`; plugins that only return plain callables need no
+  change. Tests calling `await mcp.call_tool(...)` now receive a `CallToolResult` rather than
+  a `(content, structured)` tuple — read `result.content[0].text`.
 - **Dockerfile** – removed `git` from the builder stage's apt install (no longer needed) and dropped `COPY .git/`. The build context is now smaller and the wheel build is bit-for-bit reproducible from the same source + version arg.
 - **`container.yml`** – both `dev-image` and `release-image` jobs now run `hatch version` on the host (after `astral-sh/setup-uv@v5`) and pass the result as `AZ_SCOUT_VERSION` to `docker/build-push-action`.
 

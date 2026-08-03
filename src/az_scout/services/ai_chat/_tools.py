@@ -14,7 +14,12 @@ _mcp_tool_registry: dict[str, Any] | None = None
 
 
 def _get_mcp_tools() -> dict[str, Any]:
-    """Return a dict of MCP tool name → Tool object, built lazily."""
+    """Return a dict of MCP tool name → Tool object, built lazily.
+
+    Uses the internal tool manager rather than ``MCPServer.list_tools()``: the
+    public accessor is async and returns wire-protocol tools, whereas the chat
+    dispatcher needs the internal ``Tool`` objects (for ``.fn`` and ``.parameters``).
+    """
     global _mcp_tool_registry  # noqa: PLW0603
     if _mcp_tool_registry is None:
         _mcp_tool_registry = {t.name: t for t in _mcp_server._tool_manager.list_tools()}
@@ -22,7 +27,7 @@ def _get_mcp_tools() -> dict[str, Any]:
 
 
 def _mcp_schema_to_openai(params: dict[str, Any]) -> dict[str, Any]:
-    """Convert a FastMCP parameter JSON Schema to OpenAI function-calling format.
+    """Convert an MCP parameter JSON Schema to OpenAI function-calling format.
 
     Strips ``title`` fields and converts ``anyOf`` nullable unions to simple types.
     """

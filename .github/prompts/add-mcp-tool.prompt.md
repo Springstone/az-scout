@@ -28,10 +28,12 @@ Always discuss with the user if it's not obvious — adding to `internal_plugins
 
 ## 3. Register the tool
 
-- **Core tool:** add to the list passed to `FastMCP` in `src/az_scout/mcp_server.py`.
+- **Core tool:** decorate with `@mcp.tool()` in `src/az_scout/mcp_server.py`, alongside the
+  existing tools on the module-level `MCPServer` instance.
 - **Plugin tool:** include in the plugin's `get_mcp_tools()` return list.
 
-Do **not** decorate with `@mcp.tool` — registration is centralized.
+Plugin tools must **not** be decorated with `@mcp.tool` — the core registers them from
+`get_mcp_tools()` so they can be hot-reloaded and unregistered cleanly.
 
 ## 4. Tests
 
@@ -67,5 +69,5 @@ uv run pytest tests/test_mcp_server.py -q
 Then optionally smoke-test by listing tools:
 
 ```bash
-uv run az-scout mcp --stdio   # then send tools/list from your MCP client
+uv run az-scout mcp   # stdio; then send tools/list from your MCP client
 ```
