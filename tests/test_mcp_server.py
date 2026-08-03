@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from az_scout.mcp_server import mcp
+from az_scout.mcp_server import _build_transport_security, mcp
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -767,3 +767,31 @@ class TestAuthContextPropagation:
                 mcp.remove_tool("_echo_auth")
 
         assert json.loads(result.content[0].text)["token"] == "user-token-abc"
+
+
+class TestTransportSecurity:
+    """``FASTMCP_ALLOWED_HOSTS`` parsing for the HTTP transports."""
+
+    def test_protection_disabled_when_unset(self):
+        with patch.dict("os.environ", {}, clear=True):
+            settings = _build_transport_security()
+        assert settings.enable_dns_rebinding_protection is False
+
+    def test_hosts_are_split_and_stripped(self):
+        with patch.dict("os.environ", {"FASTMCP_ALLOWED_HOSTS": "a.example.com, b.example.com"}):
+            settings = _build_transport_security()
+        assert settings.enable_dns_rebinding_protection is True
+        assert settings.allowed_hosts == ["a.example.com", "b.example.com"]
+
+    def test_blank_entries_are_dropped(self):
+        """A trailing/stray comma must not inject an empty host into the allow-list."""
+        with patch.dict("os.environ", {"FASTMCP_ALLOWED_HOSTS": "a.example.com,, ,"}):
+            settings = _build_transport_security()
+        assert settings.allowed_hosts == ["a.example.com"]
+
+    def test_malformed_value_fails_closed(self):
+        """An all-separator value keeps protection on rather than silently disabling it."""
+        with patch.dict("os.environ", {"FASTMCP_ALLOWED_HOSTS": " , "}):
+            settings = _build_transport_security()
+        assert settings.enable_dns_rebinding_protection is True
+        assert settings.allowed_hosts == []

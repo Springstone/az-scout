@@ -48,9 +48,13 @@ def _build_transport_security() -> TransportSecuritySettings:
     """
     allowed_hosts_env = os.environ.get("FASTMCP_ALLOWED_HOSTS", "")
     if allowed_hosts_env:
+        # Drop empty entries so a stray/trailing comma can't inject "" into the
+        # allow-list.  A malformed value still fails closed: protection stays on
+        # with an empty list, which rejects every host.
+        allowed_hosts = [h.strip() for h in allowed_hosts_env.split(",") if h.strip()]
         return TransportSecuritySettings(
             enable_dns_rebinding_protection=True,
-            allowed_hosts=[h.strip() for h in allowed_hosts_env.split(",")],
+            allowed_hosts=allowed_hosts,
         )
     return TransportSecuritySettings(enable_dns_rebinding_protection=False)
 
