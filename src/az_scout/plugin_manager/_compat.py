@@ -36,7 +36,9 @@ def _version_satisfies(version: str, specifier: str) -> bool | None:
         return Version(version) in SpecifierSet(specifier)
     except (InvalidSpecifier, InvalidVersion) as exc:
         logger.warning(
-            "Could not parse az-scout version specifier '%s': %s",
+            "Could not check az-scout version compatibility "
+            "(core version '%s', specifier '%s'): %s",
+            version,
             specifier,
             exc,
         )

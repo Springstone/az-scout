@@ -2161,6 +2161,22 @@ class TestCoreVersionCompat:
         assert ok is True
         assert msg == ""
 
+    def test_unverifiable_version_warning_names_both_inputs(self) -> None:
+        """The warning must not blame the specifier when the core version is at fault."""
+        from az_scout.plugin_manager._compat import check_core_version_compat
+
+        with (
+            patch("az_scout.plugin_manager._compat.logger") as mock_logger,
+            patch("az_scout.plugin_manager._compat.get_core_version", return_value="not-a-version"),
+        ):
+            check_core_version_compat(["az-scout>=2026.3.8"])
+
+        mock_logger.warning.assert_called_once()
+        args = mock_logger.warning.call_args[0]
+        message = args[0] % args[1:]
+        assert "core version 'not-a-version'" in message
+        assert "specifier '>=2026.3.8'" in message
+
 
 class TestCoreConstraintFile:
     """Tests for _write_core_constraint."""
