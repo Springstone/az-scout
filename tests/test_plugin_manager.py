@@ -2104,6 +2104,79 @@ class TestCoreVersionCompat:
             ok, msg = check_core_version_compat(["Az-Scout>=2026.3.7"])
         assert ok is True
 
+    def test_missing_packaging_does_not_crash(self) -> None:
+        """A missing ``packaging`` install must degrade gracefully, not raise.
+
+        Regression: the ``except`` clause referenced ``InvalidSpecifier``, a name
+        only bound *inside* the ``try``.  When the import failed (isolated envs
+        such as ``uv tool install az-scout``) evaluating the clause raised
+        ``UnboundLocalError`` and broke every plugin install.
+        """
+        import builtins
+
+        from az_scout.plugin_manager._compat import check_core_version_compat
+
+        real_import = builtins.__import__
+
+        def blocked_import(name: str, *args: object, **kwargs: object) -> object:
+            if name.startswith("packaging"):
+                raise ImportError(f"No module named '{name}'")
+            return real_import(name, *args, **kwargs)  # type: ignore[arg-type]
+
+        with (
+            patch.dict(sys.modules),
+            patch("builtins.__import__", blocked_import),
+            patch("az_scout.plugin_manager._compat.get_core_version", return_value="2026.3.7"),
+        ):
+            for module in [m for m in sys.modules if m.startswith("packaging")]:
+                del sys.modules[module]
+            ok, msg = check_core_version_compat(["az-scout>=2026.3.8"])
+
+        assert ok is True
+        assert msg == ""
+
+    @pytest.mark.parametrize(
+        "dependency",
+        [
+            "az-scout>>>2026.3.8",
+            "az-scout@@1.0",
+            "az-scout>=abc",
+        ],
+    )
+    def test_malformed_specifier_does_not_block(self, dependency: str) -> None:
+        from az_scout.plugin_manager._compat import check_core_version_compat
+
+        with patch("az_scout.plugin_manager._compat.get_core_version", return_value="2026.3.7"):
+            ok, msg = check_core_version_compat([dependency])
+        assert ok is True
+        assert msg == ""
+
+    def test_unparseable_core_version_does_not_block(self) -> None:
+        from az_scout.plugin_manager._compat import check_core_version_compat
+
+        with patch(
+            "az_scout.plugin_manager._compat.get_core_version", return_value="not-a-version"
+        ):
+            ok, msg = check_core_version_compat(["az-scout>=2026.3.8"])
+        assert ok is True
+        assert msg == ""
+
+    def test_unverifiable_version_warning_names_both_inputs(self) -> None:
+        """The warning must not blame the specifier when the core version is at fault."""
+        from az_scout.plugin_manager._compat import check_core_version_compat
+
+        with (
+            patch("az_scout.plugin_manager._compat.logger") as mock_logger,
+            patch("az_scout.plugin_manager._compat.get_core_version", return_value="not-a-version"),
+        ):
+            check_core_version_compat(["az-scout>=2026.3.8"])
+
+        mock_logger.warning.assert_called_once()
+        args = mock_logger.warning.call_args[0]
+        message = args[0] % args[1:]
+        assert "core version 'not-a-version'" in message
+        assert "specifier '>=2026.3.8'" in message
+
 
 class TestCoreConstraintFile:
     """Tests for _write_core_constraint."""
