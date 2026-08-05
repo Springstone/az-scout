@@ -15,6 +15,34 @@ def get_core_version() -> str:
     return __version__
 
 
+def _version_satisfies(version: str, specifier: str) -> bool | None:
+    """Return whether *version* satisfies the PEP 440 *specifier*.
+
+    Returns ``None`` when the check cannot be performed — either :mod:`packaging`
+    is unavailable or one of the inputs is unparseable.  Callers treat ``None``
+    as "cannot verify", never as an incompatibility.
+    """
+    try:
+        from packaging.specifiers import InvalidSpecifier, SpecifierSet
+        from packaging.version import InvalidVersion, Version
+    except ImportError as exc:  # pragma: no cover - packaging is a declared dependency
+        logger.warning(
+            "packaging is not installed — skipping az-scout version compatibility check: %s",
+            exc,
+        )
+        return None
+
+    try:
+        return Version(version) in SpecifierSet(specifier)
+    except (InvalidSpecifier, InvalidVersion) as exc:
+        logger.warning(
+            "Could not parse az-scout version specifier '%s': %s",
+            specifier,
+            exc,
+        )
+        return None
+
+
 def check_core_version_compat(
     dependencies: list[str],
 ) -> tuple[bool, str]:
@@ -49,24 +77,12 @@ def check_core_version_compat(
         if not specifier_str:
             return True, ""  # No version constraint — always compatible
 
-        try:
-            from packaging.specifiers import InvalidSpecifier, SpecifierSet
-            from packaging.version import Version
-
-            spec = SpecifierSet(specifier_str)
-            if Version(core_version) not in spec:
-                return False, (
-                    f"Plugin requires az-scout{specifier_str} but this instance "
-                    f"runs v{core_version}. Upgrade az-scout first."
-                )
-        except (InvalidSpecifier, Exception) as exc:
-            logger.warning(
-                "Could not parse az-scout version specifier '%s': %s",
-                specifier_str,
-                exc,
+        # ``None`` means the check could not be performed — don't block the install
+        if _version_satisfies(core_version, specifier_str) is False:
+            return False, (
+                f"Plugin requires az-scout{specifier_str} but this instance "
+                f"runs v{core_version}. Upgrade az-scout first."
             )
-            # Can't parse — don't block, just warn
-            return True, ""
 
         return True, ""
 

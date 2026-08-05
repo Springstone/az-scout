@@ -33,6 +33,7 @@ dependencies = [
     "httpx>=0.28",
     "rich>=13.9",
     "prompt-toolkit>=3.0",
+    "packaging>=24.0",
 ]
 
 [project.urls]
