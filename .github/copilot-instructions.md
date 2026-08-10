@@ -67,11 +67,13 @@ Pre-commit hooks run these automatically on `git commit`.
 - Keep FastAPI routes and MCP tools as thin wrappers.
 - Include full type annotations on all public functions.
 - Preserve dark/light theme compatibility.
+- Vendor third-party frontend assets locally (core: `static/vendor/` via `tools/vendor_assets.py`; plugins: their own `static/vendor/`).
 
 ### Do NOT
 
 - Do NOT call Azure ARM APIs directly from route handlers or MCP tools.
 - Do NOT introduce frontend frameworks, npm, or build tooling.
+- Do NOT load frontend assets from an external CDN — the CSP is `'self'`-only; vendor them instead.
 - Do NOT introduce global mutable state.
 - Do NOT perform heavy imports at module import time.
 - Do NOT change API response shapes without updating tests.

@@ -78,9 +78,25 @@ az-scout-example/
             │   └── example.css      # Plugin styles (auto-loaded via css_entry)
             ├── html/
             │   └── example-tab.html # HTML fragment (fetched by JS at runtime)
-            └── js/
-                └── example-tab.js   # Tab UI logic (auto-loaded via js_entry)
+            ├── js/
+            │   └── example-tab.js   # Tab UI logic (auto-loaded via js_entry)
+            └── vendor/
+                └── README.md        # Home for vendored third-party assets (see below)
 ```
+
+## Vendoring third-party assets (no external CDN)
+
+az-scout ships **no external CDN at runtime** and enforces a strict `'self'`-only
+Content-Security-Policy. Plugin static files are served same-origin, so anything in your package
+works — but linking to a CDN is blocked by the CSP and breaks offline / air-gapped self-hosting.
+
+- **Reuse the core's libraries first** — Bootstrap (+ Icons), D3, marked, highlight.js and
+  simple-datatables are already on the page or exposed as globals (`renderMarkdown`, `escapeHtml`,
+  `d3`, …). Don't re-ship them.
+- **Vendor extras into `static/vendor/`** and reference them via
+  `/plugins/{name}/static/vendor/…`. Your `static/` dir ships in the wheel, so vendored files work
+  identically across local dev, SaaS, and self-hosting. See
+  [`static/vendor/README.md`](src/az_scout_example/static/vendor/README.md).
 
 ## How it works
 

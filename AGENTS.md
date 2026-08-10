@@ -50,6 +50,7 @@ Pre-commit hooks enforce these on `git commit`.
 
 - Reuse `azure_api/` helpers for **every** ARM call — never use `requests.get/post` directly.
 - Vanilla JS only on the frontend — no npm, no bundler, no framework imports.
+- No external CDN at runtime — vendor third-party JS/CSS/fonts under `static/vendor/` (core) or the plugin's own `static/vendor/`; the CSP is `'self'`-only and blocks CDN links.
 - Type-annotate every Python function (mypy `disallow_untyped_defs = true`).
 - Always escape with `escapeHtml()` before any `innerHTML` or attribute interpolation.
 - Maintain dark-theme parity for any CSS change.

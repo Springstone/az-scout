@@ -67,6 +67,37 @@ if is_ai_enabled():
 `apiFetch`, `apiPost`, `aiComplete`, `aiEnabled`, `renderMarkdown`,
 `tenantQS`, `escapeHtml`, `subscriptions`, `regions`
 
+## Third-party / vendored assets (no external CDN)
+
+The core ships **no external CDN at runtime** and enforces a strict `'self'`-only
+Content-Security-Policy (`script-src`/`style-src`/`font-src`/`connect-src`). This is a
+**recommended behaviour change** for plugins, not a breaking one — plugins that reuse the
+core's already-vendored libraries need no changes.
+
+1. **Reuse what the core already vendors.** Bootstrap (+ Bootstrap Icons), D3, marked,
+   highlight.js and simple-datatables are already loaded on the page or exposed as JS globals
+   (`renderMarkdown`, `escapeHtml`, `d3`, …). Do **not** re-ship or re-link them.
+2. **Vendor anything extra into your own package.** If your plugin needs an *additional*
+   third-party JS/CSS/font, commit it under `static/vendor/` and reference it via
+   `/plugins/{name}/static/vendor/…`. Do **not** link to a CDN — the core CSP will block it at
+   runtime, and it breaks offline/air-gapped self-hosting.
+
+Your `static/` dir already ships in your wheel, so vendored files work identically across local
+dev, SaaS publishing, and customer self-hosting — with no per-mode configuration.
+
+Recommended (mirrors the core): keep a dependency-free, stdlib-only `tools/vendor_assets.py`-style
+sync script with pinned versions to (re)download vendored files on a version bump. The committed
+files remain the source of truth, so **no build tooling / npm / bundler** is introduced.
+
+```html
+<!-- ✅ vendored, served same-origin — allowed by CSP -->
+<link rel="stylesheet" href="/plugins/my-plugin/static/vendor/chart/chart.min.css">
+<script src="/plugins/my-plugin/static/vendor/chart/chart.min.js"></script>
+
+<!-- ❌ external CDN — blocked by the core CSP, breaks air-gapped self-hosting -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+```
+
 ## Create a new plugin
 
 If you need to create a new plugin, use the following command to scaffold a new plugin directory with template files:

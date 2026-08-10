@@ -70,6 +70,9 @@ Refer to [plugin-dev.instructions.md](../../instructions/plugin-dev.instructions
 - **Routes** mounted at `/plugins/{name}/` — use relative paths
 - **MCP tools** are plain functions with type annotations + docstrings
 - **Static dir** defined as `Path(__file__).parent / "static"`
+- **No external CDN** — reuse the core's vendored libs (Bootstrap, Bootstrap Icons, D3, marked,
+  highlight.js, simple-datatables) or vendor extra deps into `static/vendor/` and reference them
+  via `/plugins/{name}/static/vendor/…`. The core CSP is `'self'`-only and blocks CDN links.
 - **AI completion**: Use `plugin_ai_complete()` / `aiComplete()` for inline AI recommendations
 - **AI availability**: Check `is_ai_enabled()` (Python) or `aiEnabled` (JS) before calling AI
 

@@ -154,11 +154,11 @@ async def _plugin_error_handler(_request: Request, exc: PluginError) -> JSONResp
 _CSP_POLICY = "; ".join(
     [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net d3js.org",
-        "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net",
-        "font-src 'self' cdn.jsdelivr.net",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
+        "font-src 'self'",
         "img-src 'self' data: https://github.com https://*.githubusercontent.com https://img.shields.io",
-        "connect-src 'self' cdn.jsdelivr.net https://plugin-catalog.az-scout.com",
+        "connect-src 'self' https://plugin-catalog.az-scout.com",
         "frame-ancestors 'none'",
     ]
 )

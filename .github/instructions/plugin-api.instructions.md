@@ -67,6 +67,21 @@ JS: `if (aiEnabled) { const r = await aiComplete("...", {cacheTtl: 600}); }`
 - Respect core authentication and context model
 - Never override built-in routes
 
+## Content-Security-Policy & plugin assets
+
+The core serves a strict `'self'`-only CSP (`script-src`/`style-src`/`font-src`/`connect-src` in
+`app.py:_CSP_POLICY`) and ships zero external CDN at runtime. Plugin static dirs are mounted
+**same-origin** (`/plugins/{name}/static`, `/internal/{name}/static`), so plugin-vendored assets
+are allowed automatically — **but any plugin that links an external CDN is blocked by the CSP.**
+
+- When changing `_CSP_POLICY`, keep it `'self'`-only. Do **not** re-add CDN hosts to accommodate a
+  plugin; the convention is that plugins **vendor** their extra third-party assets into their own
+  package (see `plugin-author.instructions.md` → *Third-party / vendored assets*).
+- If a genuine cross-origin need arises (e.g. an image host), scope it as narrowly as possible and
+  document it in `CHANGELOG.md`.
+- The core already vendors Bootstrap (+ Icons), D3, marked, highlight.js and simple-datatables;
+  plugins should reuse these rather than re-vendor.
+
 ## Testing
 
 - Use `pytest` + `httpx` with `TestClient`
