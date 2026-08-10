@@ -59,6 +59,23 @@ example = "az_scout_example:plugin"
 - Fetch subscriptions from `/api/subscriptions?tenant_id=…` when tenant changes.
 - Plugin static assets are at `/plugins/{name}/static/…`.
 
+## Third-party / vendored assets (no external CDN)
+
+az-scout ships **no external CDN at runtime** and enforces a strict `'self'`-only
+Content-Security-Policy. Plugin static assets are served **same-origin**, so anything you ship in
+your package works — but linking to a CDN is **blocked by the CSP** and breaks offline /
+air-gapped self-hosting.
+
+- **Reuse the core's libraries first.** Bootstrap (+ Bootstrap Icons), D3, marked, highlight.js and
+  simple-datatables are already loaded / exposed as globals (`renderMarkdown`, `escapeHtml`, `d3`,
+  …). Don't re-ship or re-link them.
+- **Vendor extra dependencies into your package.** Commit any *additional* third-party JS/CSS/font
+  under `src/az_scout_{name}/static/vendor/` and reference it via
+  `/plugins/{name}/static/vendor/…`. Never link to a CDN.
+- Your `static/` dir ships in your wheel, so vendored files work identically across local dev,
+  SaaS, and self-hosting. Optionally mirror the core with a dependency-free `vendor_assets.py`
+  sync script pinning versions — no npm/bundler.
+
 ## MCP tool patterns
 
 - MCP tools are plain Python functions with type annotations and a docstring.
